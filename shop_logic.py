@@ -133,8 +133,7 @@ class Shop:
                 price REAL NOT NULL,
                 sizes TEXT DEFAULT '',
                 photo_id TEXT DEFAULT '',
-                active INTEGER DEFAULT 1,
-                old_price REAL
+                active INTEGER DEFAULT 1
             );
             CREATE TABLE IF NOT EXISTS leads (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -170,8 +169,6 @@ class Shop:
             conn.execute("ALTER TABLE products ADD COLUMN category TEXT DEFAULT ''")
         if "state" not in cols:
             conn.execute("ALTER TABLE products ADD COLUMN state TEXT DEFAULT ''")
-        if "old_price" not in cols:
-            conn.execute("ALTER TABLE products ADD COLUMN old_price REAL")
         lcols = {r[1] for r in conn.execute("PRAGMA table_info(leads)")}
         if "waiting" not in lcols:
             conn.execute("ALTER TABLE leads ADD COLUMN waiting INTEGER DEFAULT 0")
@@ -204,8 +201,6 @@ class Shop:
 
     def product_dict(self, row) -> dict:
         keys = normalize_media(row["photo_id"])
-        old_price = row["old_price"]
-        has_discount = old_price is not None and old_price > row["price"]
         return {
             "id": row["id"],
             "name": row["name"],
@@ -214,9 +209,6 @@ class Shop:
             "description": row["description"] or "",
             "price": row["price"],
             "price_text": self.money(row["price"]),
-            "old_price": old_price if has_discount else None,
-            "old_price_text": self.money(old_price) if has_discount else "",
-            "discount": has_discount,
             "sizes": split_sizes(row["sizes"]),
             "media": [media_json(i) for i in keys],
             "media_keys": keys,
@@ -246,39 +238,28 @@ class Shop:
         sizes = ", ".join(split_sizes(sizes or ""))
         return name, description, price, sizes
 
-    @staticmethod
-    def clean_old_price(old_price, price):
-        if old_price is None or not str(old_price).strip():
-            return None
-        value = parse_price(old_price)
-        if value <= price:
-            raise ValueError("Старая цена должна быть выше новой цены")
-        return value
-
-    def create_product(self, name, description, price, sizes, media_items, category="", state="", old_price=None):
+    def create_product(self, name, description, price, sizes, media_items, category="", state=""):
         name, description, price, sizes = self.clean_fields(name, description, price, sizes)
-        old_price = self.clean_old_price(old_price, price)
         if len(media_items) > MAX_MEDIA:
             raise ValueError(f"Максимум {MAX_MEDIA} фото и видео на товар")
         conn = self.connect()
         cur = conn.execute(
-            "INSERT INTO products (name, description, price, sizes, photo_id, active, category, state, old_price) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)",
-            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), old_price),
+            "INSERT INTO products (name, description, price, sizes, photo_id, active, category, state) VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
+            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state)),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM products WHERE id = ?", (cur.lastrowid,)).fetchone()
         conn.close()
         return row
 
-    def update_product(self, pid, name, description, price, sizes, media_items, category="", state="", old_price=None):
+    def update_product(self, pid, name, description, price, sizes, media_items, category="", state=""):
         name, description, price, sizes = self.clean_fields(name, description, price, sizes)
-        old_price = self.clean_old_price(old_price, price)
         if len(media_items) > MAX_MEDIA:
             raise ValueError(f"Максимум {MAX_MEDIA} фото и видео на товар")
         conn = self.connect()
         conn.execute(
-            "UPDATE products SET name=?, description=?, price=?, sizes=?, photo_id=?, category=?, state=?, old_price=? WHERE id=?",
-            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), old_price, pid),
+            "UPDATE products SET name=?, description=?, price=?, sizes=?, photo_id=?, category=?, state=? WHERE id=?",
+            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), pid),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM products WHERE id = ?", (pid,)).fetchone()

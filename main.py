@@ -266,8 +266,7 @@ def init_db():
             price REAL NOT NULL,
             sizes TEXT DEFAULT '',
             photo_id TEXT DEFAULT '',
-            active INTEGER DEFAULT 1,
-            old_price REAL
+            active INTEGER DEFAULT 1
         )
     ''')
     # Кто нажимал кнопку «Написать менеджеру» под товаром
@@ -283,8 +282,6 @@ def init_db():
         )
     ''')
     product_cols = {r[1] for r in cursor.execute("PRAGMA table_info(products)")}
-    if "old_price" not in product_cols:
-        cursor.execute("ALTER TABLE products ADD COLUMN old_price REAL")
     conn.commit()
     conn.close()
 
