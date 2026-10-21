@@ -16,7 +16,7 @@ MSK = timezone(timedelta(hours=3))
 MAX_MEDIA = 10
 LOCAL_NAME_RE = re.compile(r"^[0-9a-f]{32}\.[a-z0-9]{2,5}$")
 MEDIA_PREFIXES = ("p:", "v:", "lp:", "lv:")
-CATEGORIES = ["Спорт", "Карбон", "Подогрев", "Классика", "Аксессуары"]
+CATEGORIES = ["Спорт", "Карбон", "Подогрев", "Классика", "Аксессуары", "Обвесы", "Диски"]
 STAGES = ["Заказ", "Склад", "В пути", "У вас"]
 STATES = {"": "В наличии", "soon": "Скоро", "sold": "Продан"}
 
@@ -109,7 +109,7 @@ def now_msk() -> str:
 
 # ---------------------------------------------------------------------- Shop
 class Shop:
-    def __init__(self, db_path: str, currency_sign: str = "₽"):
+    def __init__(self, db_path: str, currency_sign: str = "BYN"):
         self.db_path = db_path
         self.currency_sign = currency_sign
 

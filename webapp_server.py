@@ -34,7 +34,7 @@ def jerr(status: int, message: str):
 
 def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
                notify_admins, static_dir, upload_dir, cache_dir,
-               tagline="Одежда и обувь из Китая", currency="₽", webapp_url=""):
+               tagline="Одежда и обувь из Китая", currency="BYN", webapp_url=""):
     os.makedirs(upload_dir, exist_ok=True)
     os.makedirs(cache_dir, exist_ok=True)
 

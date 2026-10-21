@@ -540,7 +540,7 @@ function gate(title, text) {
 const emptyState = (icon, title, text) => `<div class="empty"><div class="ring">${ico(icon)}</div><h3>${esc(title)}</h3><p>${esc(text)}</p></div>`;
 const initial = n => (String(n || '?').trim()[0] || '?').toUpperCase();
 const money = p => {
-  const sign = (p.price_text || '').split(' ').pop() || '₽';
+  const sign = (p.price_text || '').split(' ').pop() || 'BYN';
   try { return new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(p.price) + ' ' + sign; }
   catch (e) { return p.price_text; }
 };
@@ -780,7 +780,7 @@ function openProduct(p) {
 }
 
 /* ================================================================= ПОСЫЛКИ */
-const CATS = ['Спорт', 'Карбон', 'Подогрев', 'Классика', 'Аксессуары'];
+const CATS = ['Спорт', 'Карбон', 'Подогрев', 'Классика', 'Аксессуары', 'Обвесы', 'Диски'];
 const STAGES = ['Заказ', 'Склад', 'В пути', 'У вас'];
 const stamp = text => `<span class="stamp">${ico('truck')}${esc(text)}</span>`;
 const stageBar = n => `<div class="stg" role="img" aria-label="Этап: ${esc(STAGES[n])}">${STAGES.map((s, i) => `<div class="sg ${i < n ? 'done' : i === n ? 'cur' : ''}"><i></i><span>${s}</span></div>`).join('')}</div>`;
@@ -877,7 +877,7 @@ async function compressImage(file) {
 function openProductEditor(p) {
   const MAX = 10;
   const items = p ? p.media.map((m, i) => ({ old: true, key: p.media_keys[i], type: m.type, url: m.url })) : [];
-  const sign = p ? (p.price_text || '').split(' ').pop() : (S.me.currency || '₽');
+  const sign = p ? (p.price_text || '').split(' ').pop() : (S.me.currency || 'BYN');
   const ctl = openSheet(`
     <div class="grab"></div>
     <div class="sheet-head"><h2>${p ? 'Редактирование' : 'Новый товар'}</h2><button class="xbtn" data-close aria-label="Закрыть">${ico('close', 'sm')}</button></div>
