@@ -325,7 +325,7 @@ async def start_cmd(message: Message, state: FSMContext):
         text = (
             "👑 <b>AutoPrime</b>\n"
             "Панель администратора\n\n"
-            "Товары, заказы и интерес клиентов — всё в приложении 👇"
+            "Товары каталога и управление магазином — в приложении 👇"
         )
     else:
         text = (
@@ -630,7 +630,7 @@ async def collect_photo(message: Message, state: FSMContext):
 async def product_add_start(message: Message, state: FSMContext):
     await state.clear()
     if not is_admin(message.from_user.id): return
-    await message.answer("1️⃣ Введите название товара (например: Пуховик зимний):")
+    await message.answer("1️⃣ Введите название товара (например: Спорт-руль с перфорацией):")
     await state.set_state(ProductStates.name)
 
 

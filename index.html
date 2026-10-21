@@ -87,10 +87,17 @@ h1,h2,h3,p{margin:0}
 .ph .ico{width:36px;height:36px;opacity:.55}
 .badge{position:absolute;display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;background:rgba(10,16,34,.62);color:#fff;font-size:12px;font-weight:600;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
 .badge.tr{top:10px;right:10px}.badge.tl{top:10px;left:10px}
-.hit{position:absolute;z-index:3;right:9px;bottom:9px;padding:4px 8px;border-radius:6px;background:var(--cta);color:var(--on-cta);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}
 .badge .ico{width:12px;height:12px;stroke-width:2.4}
 .nm{padding:0 2px;font-weight:600;font-size:14.5px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sz{margin-top:3px;padding:0 2px;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.season{display:grid;grid-template-columns:minmax(0,1fr) 112px;width:calc(100% - 32px);min-height:138px;margin:14px 16px 4px;padding:18px;border:0;border-radius:18px;overflow:hidden;background:linear-gradient(118deg,var(--cta) 0 67%,#171917 67%);color:var(--on-cta);text-align:left}
+.season .ey{font:800 12px/1.2 Inter,sans-serif;letter-spacing:1.8px;text-transform:uppercase}
+.season .snm{display:block;margin:12px 0 8px;font:800 20px/1.08 Inter,sans-serif}
+.season .spr{display:inline-flex;padding:6px 10px;border-radius:10px;background:#161916;color:var(--cta);font-weight:900}
+.swheel{position:relative;align-self:center;justify-self:center;width:82px;height:82px;border:9px solid var(--cta);border-radius:50%}
+.swheel:before,.swheel:after{content:"";position:absolute;left:50%;top:50%;width:58px;height:7px;background:var(--cta);transform-origin:left center}
+.swheel:before{transform:rotate(0deg)}.swheel:after{transform:rotate(120deg)}
+.swheel i{position:absolute;inset:25px;z-index:2;border:6px solid var(--cta);border-radius:50%;background:#171917}
 .skel .ph,.skel .l{animation:pulse 1.3s ease-in-out infinite}
 .skel .l{height:12px;border-radius:6px;background:var(--line);margin:8px 2px}
 @keyframes pulse{50%{opacity:.5}}
@@ -137,6 +144,9 @@ h1,h2,h3,p{margin:0}
 .tab.on{color:var(--ink)}
 .tab.on .ico{stroke-width:2.2}
 .tab.on::after{content:"";position:absolute;bottom:1px;left:50%;width:20px;height:3px;margin-left:-10px;border-radius:2px;background:var(--accent)}
+.tab.chat .ico{width:50px;height:50px;margin-top:-19px;padding:13px;border-radius:16px;background:var(--cta);color:var(--on-cta);stroke:currentColor;box-shadow:0 6px 20px rgba(198,241,53,.22)}
+.tab.chat span{margin-top:-8px}
+.tab.chat::after{display:none}
 
 /* ---------- окна ---------- */
 .overlay{position:fixed;inset:0;z-index:50;background:rgba(6,10,22,0);transition:background .25s ease;display:flex;align-items:flex-end}
@@ -578,13 +588,14 @@ function openSheet(inner, { cls = '', onClose } = {}) {
 
 /* ---------- вкладки ---------- */
 function renderTabs() {
-  const tabs = [['catalog', 'store', 'Каталог'], ['status', 'box', 'Заказы'], ['profile', 'user', 'Профиль']];
+  const tabs = [['catalog', 'store', 'Каталог'], ['status', 'box', 'Заказы'], ['chat', 'chat', 'Чат'], ['profile', 'user', 'Профиль']];
   if (S.me && S.me.is_admin) tabs.push(['admin', 'shield', 'Управление']);
   const nav = $('#tabs'); nav.hidden = false;
-  nav.innerHTML = tabs.map(([k, i, l]) => `<button class="tab ${S.tab === k ? 'on' : ''}" data-tab="${k}">${ico(i)}<span>${l}</span></button>`).join('');
+  nav.innerHTML = tabs.map(([k, i, l]) => `<button class="tab ${k === 'chat' ? 'chat' : ''} ${S.tab === k ? 'on' : ''}" data-tab="${k}">${ico(i)}<span>${l}</span></button>`).join('');
 }
 $('#tabs').addEventListener('click', e => {
   const b = e.target.closest('[data-tab]'); if (!b) return;
+  if (b.dataset.tab === 'chat') { haptic('light'); openChat('https://t.me/' + S.me.manager); return; }
   haptic('light'); go(b.dataset.tab);
 });
 function go(tab) {
@@ -608,7 +619,7 @@ function cover(p) {
   return `<div class="ph">${mediaThumb(m)}${m.type === 'video' ? `<span class="badge tl">${ico('play')} Видео</span>` : ''}${p.media.length > 1 ? `<span class="badge tr">${ico('image')} ${p.media.length}</span>` : ''}</div>`;
 }
 function productCard(p, i) {
-  return `<button class="card ${p.state ? 'is-' + p.state : ''}" data-id="${p.id}" style="--i:${Math.min(i, 7)}"><div class="pw">${cover(p)}${p.featured ? '<span class="hit">Хит продаж</span>' : ''}${p.state ? `<span class="st st-${p.state}">${p.state === 'sold' ? 'Продан' : 'Скоро'}</span>` : ''}<span class="tagw"><span class="tag">${esc(money(p))}</span></span></div><div class="nm">${esc(p.name)}</div>${p.sizes.length ? `<div class="sz">${esc(p.sizes.join(', '))}</div>` : ''}</button>`;
+  return `<button class="card ${p.state ? 'is-' + p.state : ''}" data-id="${p.id}" style="--i:${Math.min(i, 7)}"><div class="pw">${cover(p)}${p.state ? `<span class="st st-${p.state}">${p.state === 'sold' ? 'Продан' : 'Скоро'}</span>` : ''}<span class="tagw"><span class="tag">${esc(money(p))}</span></span></div><div class="nm">${esc(p.name)}</div>${p.sizes.length ? `<div class="sz">${esc(p.sizes.join(', '))}</div>` : ''}</button>`;
 }
 const skeletons = n => Array.from({ length: n }, () => `<div class="card skel"><div class="pw"><div class="ph"></div></div><div class="l" style="width:80%"></div><div class="l" style="width:40%"></div></div>`).join('');
 
@@ -616,6 +627,7 @@ async function renderCatalog() {
   view.innerHTML = `
     <header class="hero"><svg class="lg" width="46" height="46" viewBox="0 0 40 40" aria-hidden="true"><polygon points="3,36 17,6 27,6 13,36" fill="#C6F135"/><polygon points="22,15 26,8 38,36 30,36" fill="#9CC426"/><polygon points="11,27 30,27 33,31 8,31" fill="#E3F98A"/></svg><h1>AutoPrime</h1><p>${esc(S.me.tagline || 'Рули и авто тюнинг')}</p></header>
     <div class="stripe"></div>
+    <div id="season"></div>
     <div class="searchbar"><label class="search">${ico('search')}<input id="q" type="search" placeholder="Поиск по каталогу" value="${esc(S.search)}" autocomplete="off"></label><button type="button" class="fbtn" id="fbtn" aria-label="Фильтры">${ico('burger')}<i class="fdot" id="fdot" hidden></i></button></div>
     <div id="filters" class="filters"></div>
     <section id="grid" class="grid">${skeletons(6)}</section>`;
@@ -632,6 +644,10 @@ async function renderCatalog() {
   $('#grid').addEventListener('click', e => {
     const c = e.target.closest('.card[data-id]'); if (!c) return;
     const p = S.products.find(x => x.id === +c.dataset.id); if (p) { haptic('light'); openProduct(p); }
+  });
+  $('#season').addEventListener('click', e => {
+    const b = e.target.closest('[data-season]'); if (!b) return;
+    const p = S.products.find(x => x.id === +b.dataset.season); if (p) { haptic('light'); openProduct(p); }
   });
   try { await loadProducts(); drawFilters(); drawGrid(); }
   catch (e) { if (e.message !== 'unauthorized') $('#grid').innerHTML = emptyState('alert', 'Не удалось загрузить каталог', e.message); }
@@ -703,10 +719,16 @@ function drawGrid() {
   if (S.sort === 'asc') list = list.slice().sort((a, b) => a.price - b.price);
   else if (S.sort === 'desc') list = list.slice().sort((a, b) => b.price - a.price);
   const filtered = !!(q || S.cat || S.size);
+  drawSeason();
   g.classList.toggle('fresh', S.fresh && !filtered);
   g.innerHTML = list.length ? list.map(productCard).join('')
     : (S.products.length ? emptyState('search', 'Ничего не найдено', 'Попробуйте изменить запрос или фильтры') : emptyState('tag', 'Каталог пока пуст', 'Новые вещи скоро появятся'));
   if (list.length) S.fresh = false;
+}
+function drawSeason() {
+  const box = $('#season'); if (!box) return;
+  const p = S.products.find(x => x.featured && x.active);
+  box.innerHTML = p ? `<button class="season" data-season="${p.id}"><span><span class="ey">Хит сезона</span><b class="snm">${esc(p.name)}</b><span class="spr">${esc(money(p))}</span></span><span class="swheel" aria-hidden="true"><i></i></span></button>` : '';
 }
 
 const viewedIds = new Set();
@@ -732,7 +754,7 @@ function openProduct(p) {
         <span class="tagw big"><span class="tag">${esc(money(p))}</span></span>
       </div>
       <div class="pinfo">
-        ${p.featured ? '<span class="pill pill-soon">Хит продаж</span>' : ''}<h2>${esc(p.name)}</h2>
+        ${p.featured ? '<span class="pill pill-soon">Хит сезона</span>' : ''}<h2>${esc(p.name)}</h2>
         <p class="psub">${esc(S.me.store)}</p>
         ${p.sizes.length ? `<h3 class="h3">Размер</h3><div class="sizes" id="sizes">${p.sizes.map(s => `<button type="button" class="sizebtn" data-s="${esc(s)}">${esc(s)}</button>`).join('')}</div><p class="hint">Выберите размер, он попадёт в сообщение менеджеру</p>` : ''}
         ${p.description ? `<h3 class="h3">Описание</h3><div class="desc">${esc(p.description)}</div>` : ''}
@@ -819,28 +841,21 @@ function renderProfile() {
     <header class="hero small"><h1>Профиль</h1></header>
     <div class="stripe thin"></div>
     <div class="pcard" style="padding-top:22px"><div class="avatar">${esc(initial(m.name))}</div><h2>${esc(m.name)}</h2>${m.username ? `<div class="un">@${esc(m.username)}</div>` : ''}</div>
-    <div class="kv">
-      <div><span>Ваш Telegram ID</span><b>${m.id}</b></div>
-      <div><span>Менеджер</span><b>@${esc(m.manager)}</b></div>
-    </div>
-    <div class="pbtns">
-      <button class="btn primary" id="cm">${ico('chat', 'sm')} Написать менеджеру</button>
-      <button class="btn" id="cid">${ico('copy', 'sm')} Скопировать мой ID</button>
-    </div>
-    <p class="hint" style="margin:14px 20px 0">Назовите ID менеджеру, и ваши заказы будут появляться во вкладке «Заказы» сами.</p>`;
-  $('#cid').addEventListener('click', () => copyText(String(m.id)));
+    <div style="display:flex;flex-direction:column;align-items:center;gap:10px;padding:22px 20px">
+      <div class="un">Менеджер @${esc(m.manager)}</div>
+      <button class="btn primary big" id="cm" style="max-width:320px">${ico('chat', 'sm')} Написать менеджеру</button>
+    </div>`;
   $('#cm').addEventListener('click', () => openChat('https://t.me/' + m.manager));
 }
 
 /* ================================================================== УПРАВЛЕНИЕ */
 function renderAdmin() {
+  S.atab = 'products';
   view.innerHTML = `
-    <header class="hero small"><h1>Управление</h1><p>Товары, заказы, интерес и рассылки</p></header>
+    <header class="hero small"><h1>Управление</h1><p>Товары каталога и хит сезона</p></header>
     <div class="stripe thin"></div>
-    <div class="atabs">${[['products', 'Товары'], ['orders', 'Заказы'], ['leads', 'Интерес'], ['broadcasts', 'Рассылки']].map(([k, l]) => `<button data-a="${k}" class="${S.atab === k ? 'on' : ''}">${l}</button>`).join('')}</div>
     <div id="apane" style="padding-top:12px"></div>`;
-  $$('.atabs button').forEach(b => b.addEventListener('click', () => { S.atab = b.dataset.a; haptic('light'); renderAdmin(); }));
-  ({ products: adminProducts, orders: adminOrders, leads: adminLeads, broadcasts: adminBroadcasts })[S.atab]();
+  adminProducts();
 }
 const pane = () => $('#apane');
 const loading = () => { const p = pane(); if (p) p.innerHTML = `<div class="list">${Array.from({ length: 4 }, () => '<div class="item skel"><div class="thumb"></div><div class="grow"><div class="l" style="width:60%"></div><div class="l" style="width:35%"></div></div></div>').join('')}</div>`; };
@@ -855,7 +870,7 @@ async function adminProducts() {
     pane().innerHTML = (d.items.length ? `<div class="list">${d.items.map(p => `
       <button class="item" data-id="${p.id}">
         <span class="thumb">${p.media[0] ? mediaThumb(p.media[0]) : ico('tag')}</span>
-        <span class="grow"><div class="t"><span class="n">${esc(p.name)}</span>${p.featured ? '<span class="pill pill-soon">хит</span>' : ''}${p.active ? '' : '<span class="pill">скрыт</span>'}${p.state === 'soon' ? '<span class="pill pill-soon">скоро</span>' : p.state === 'sold' ? '<span class="pill pill-sold">продан</span>' : ''}</div><div class="s">${esc(money(p))}</div>${p.sizes.length ? `<div class="s">${esc(p.sizes.join(', '))}</div>` : ''}</span>
+        <span class="grow"><div class="t"><span class="n">${esc(p.name)}</span>${p.featured ? '<span class="pill pill-soon">хит сезона</span>' : ''}${p.active ? '' : '<span class="pill">скрыт</span>'}${p.state === 'soon' ? '<span class="pill pill-soon">скоро</span>' : p.state === 'sold' ? '<span class="pill pill-sold">продан</span>' : ''}</div><div class="s">${esc(money(p))}</div>${p.sizes.length ? `<div class="s">${esc(p.sizes.join(', '))}</div>` : ''}</span>
         <span class="go">${ico('chevron', 'sm')}</span>
       </button>`).join('')}</div>` : emptyState('tag', 'Товаров пока нет', 'Нажмите «+», чтобы добавить первый товар'))
       + `<button class="fab" id="fab" aria-label="Добавить товар">${ico('plus')}</button>`;
@@ -889,9 +904,9 @@ function openProductEditor(p) {
       <p class="hint">Можно выбрать сразу несколько файлов. Первое фото станет обложкой.</p>
       <input type="file" id="mfile" accept="image/*,video/*" multiple hidden>
       <h3 class="h3">Информация</h3>
-      <label class="field"><span>Название</span><input name="name" maxlength="100" placeholder="Например, Пуховик зимний" value="${esc(p ? p.name : '')}" required></label>
+      <label class="field"><span>Название</span><input name="name" maxlength="100" placeholder="Например, Спорт-руль с перфорацией" value="${esc(p ? p.name : '')}" required></label>
       <div class="field"><span>Статус товара</span><div class="chips" id="statechips" style="margin-top:0">${[['', 'В наличии'], ['soon', 'Скоро'], ['sold', 'Продан']].map(([k, l]) => `<button type="button" class="chip ${(p ? (p.state || '') : '') === k ? 'sel' : ''}" data-k="${k}">${l}</button>`).join('')}</div></div>
-      <div class="field"><span>Продвижение</span><div class="chips" style="margin-top:0"><button type="button" class="chip ${p && p.featured ? 'sel' : ''}" id="featured">Хит продаж</button></div></div>
+      <div class="field"><span>Главный баннер</span><div class="chips" style="margin-top:0"><button type="button" class="chip ${p && p.featured ? 'sel' : ''}" id="featured">Хит сезона</button></div><p class="hint">На главной показывается только один хит сезона. Если выключить — баннер исчезнет.</p></div>
       <div class="field"><span>Категория</span><div class="chips" id="catchips" style="margin-top:0">${CATS.map(c => `<button type="button" class="chip ${p && p.category === c ? 'sel' : ''}" data-c="${c}">${c}</button>`).join('')}</div></div>
       <div class="row2">
         <label class="field"><span>Цена, ${esc(sign)}</span><input name="price" inputmode="decimal" placeholder="4500" value="${p ? esc(String(p.price)) : ''}" required></label>
@@ -899,7 +914,6 @@ function openProductEditor(p) {
       </div>
       <div class="chips" id="szprev" style="margin:-4px 0 14px"></div>
       <label class="field"><span>Описание</span><textarea name="description" maxlength="600" placeholder="Состояние, материал, особенности">${esc(p ? p.description : '')}</textarea></label>
-      ${p && p.active && p.state !== 'sold' ? `<h3 class="h3">Рассылка</h3><p class="hint" style="margin:0 0 10px">Отправит фото товара и кнопку «Зайти в магазин» всем, кто открывал бота. Сначала сохраните товар, потом можно проверить на себе.</p><div style="display:flex;gap:10px"><button class="btn" id="bctest" type="button" style="flex:1">Тест себе</button><button class="btn primary" id="bcall" type="button" style="flex:1">Разослать всем</button></div>` : ''}
       <div class="progress" id="prog" hidden><i></i></div>
     </form>
     <div class="sheet-foot">

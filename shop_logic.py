@@ -247,6 +247,8 @@ class Shop:
         if len(media_items) > MAX_MEDIA:
             raise ValueError(f"Максимум {MAX_MEDIA} фото и видео на товар")
         conn = self.connect()
+        if featured:
+            conn.execute("UPDATE products SET featured = 0")
         cur = conn.execute(
             "INSERT INTO products (name, description, price, sizes, photo_id, active, category, state, featured) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)",
             (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), 1 if featured else 0),
@@ -261,6 +263,8 @@ class Shop:
         if len(media_items) > MAX_MEDIA:
             raise ValueError(f"Максимум {MAX_MEDIA} фото и видео на товар")
         conn = self.connect()
+        if featured:
+            conn.execute("UPDATE products SET featured = 0 WHERE id != ?", (pid,))
         conn.execute(
             "UPDATE products SET name=?, description=?, price=?, sizes=?, photo_id=?, category=?, state=?, featured=? WHERE id=?",
             (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), 1 if featured else 0, pid),
