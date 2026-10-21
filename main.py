@@ -267,7 +267,7 @@ def init_db():
             sizes TEXT DEFAULT '',
             photo_id TEXT DEFAULT '',
             active INTEGER DEFAULT 1,
-            featured INTEGER DEFAULT 0
+            old_price REAL
         )
     ''')
     # Кто нажимал кнопку «Написать менеджеру» под товаром
@@ -283,8 +283,8 @@ def init_db():
         )
     ''')
     product_cols = {r[1] for r in cursor.execute("PRAGMA table_info(products)")}
-    if "featured" not in product_cols:
-        cursor.execute("ALTER TABLE products ADD COLUMN featured INTEGER DEFAULT 0")
+    if "old_price" not in product_cols:
+        cursor.execute("ALTER TABLE products ADD COLUMN old_price REAL")
     conn.commit()
     conn.close()
 

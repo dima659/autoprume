@@ -90,14 +90,9 @@ h1,h2,h3,p{margin:0}
 .badge .ico{width:12px;height:12px;stroke-width:2.4}
 .nm{padding:0 2px;font-weight:600;font-size:14.5px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sz{margin-top:3px;padding:0 2px;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.season{display:grid;grid-template-columns:minmax(0,1fr) 112px;width:calc(100% - 32px);min-height:138px;margin:14px 16px 4px;padding:18px;border:0;border-radius:18px;overflow:hidden;background:linear-gradient(118deg,var(--cta) 0 67%,#171917 67%);color:var(--on-cta);text-align:left}
-.season .ey{font:800 12px/1.2 Inter,sans-serif;letter-spacing:1.8px;text-transform:uppercase}
-.season .snm{display:block;margin:12px 0 8px;font:800 20px/1.08 Inter,sans-serif}
-.season .spr{display:inline-flex;padding:6px 10px;border-radius:10px;background:#161916;color:var(--cta);font-weight:900}
-.swheel{position:relative;align-self:center;justify-self:center;width:82px;height:82px;border:9px solid var(--cta);border-radius:50%}
-.swheel:before,.swheel:after{content:"";position:absolute;left:50%;top:50%;width:58px;height:7px;background:var(--cta);transform-origin:left center}
-.swheel:before{transform:rotate(0deg)}.swheel:after{transform:rotate(120deg)}
-.swheel i{position:absolute;inset:25px;z-index:2;border:6px solid var(--cta);border-radius:50%;background:#171917}
+.discount{position:absolute;z-index:3;top:9px;right:9px;padding:4px 8px;border-radius:6px;background:var(--red);color:#fff;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.5px}
+.oldp{margin:5px 2px 0;color:var(--muted);font-size:12px;text-decoration:line-through;text-decoration-thickness:1.5px}
+.detail-discount{display:flex;align-items:center;gap:9px;margin-bottom:8px}.detail-discount s{color:var(--muted)}.detail-discount b{padding:3px 8px;border-radius:6px;background:var(--red);color:#fff;font-size:11px;text-transform:uppercase}
 .skel .ph,.skel .l{animation:pulse 1.3s ease-in-out infinite}
 .skel .l{height:12px;border-radius:6px;background:var(--line);margin:8px 2px}
 @keyframes pulse{50%{opacity:.5}}
@@ -138,15 +133,16 @@ h1,h2,h3,p{margin:0}
 .hint{font-size:13px;color:var(--muted);margin-top:6px}
 
 /* ---------- нижняя панель ---------- */
-#tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:flex;justify-content:space-around;padding:6px 8px calc(6px + var(--safe-b));background:var(--bg);border-top:1px solid var(--line)}
+#tabs{position:fixed;left:0;right:0;bottom:0;z-index:20;display:grid;grid-template-columns:repeat(3,1fr);padding:6px 8px calc(6px + var(--safe-b));background:var(--bg);border-top:1px solid var(--line)}
+#tabs.admin-nav{grid-template-columns:repeat(5,1fr)}
 .tab{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 0 9px;border:0;background:none;color:var(--muted);font-size:12px;font-weight:600;transition:color .15s}
 .tab .ico{width:24px;height:24px}
 .tab.on{color:var(--ink)}
 .tab.on .ico{stroke-width:2.2}
 .tab.on::after{content:"";position:absolute;bottom:1px;left:50%;width:20px;height:3px;margin-left:-10px;border-radius:2px;background:var(--accent)}
-.tab.chat .ico{width:50px;height:50px;margin-top:-19px;padding:13px;border-radius:16px;background:var(--cta);color:var(--on-cta);stroke:currentColor;box-shadow:0 6px 20px rgba(198,241,53,.22)}
-.tab.chat span{margin-top:-8px}
+.tab.chat .ico{width:62px;height:62px;margin-top:-28px;padding:17px;border-radius:19px;background:var(--cta);color:var(--on-cta);stroke:currentColor;box-shadow:0 7px 24px rgba(198,241,53,.28)}
 .tab.chat::after{display:none}
+.navspace{display:block}
 
 /* ---------- окна ---------- */
 .overlay{position:fixed;inset:0;z-index:50;background:rgba(6,10,22,0);transition:background .25s ease;display:flex;align-items:flex-end}
@@ -588,10 +584,17 @@ function openSheet(inner, { cls = '', onClose } = {}) {
 
 /* ---------- вкладки ---------- */
 function renderTabs() {
-  const tabs = [['catalog', 'store', 'Каталог'], ['status', 'box', 'Заказы'], ['chat', 'chat', 'Чат'], ['profile', 'user', 'Профиль']];
-  if (S.me && S.me.is_admin) tabs.push(['admin', 'shield', 'Управление']);
+  const admin = !!(S.me && S.me.is_admin);
+  const tabs = admin
+    ? [['catalog', 'store', 'Каталог'], null, ['chat', 'chat', ''], ['profile', 'user', 'Профиль'], ['admin', 'shield', 'Управление']]
+    : [['catalog', 'store', 'Каталог'], ['chat', 'chat', ''], ['profile', 'user', 'Профиль']];
   const nav = $('#tabs'); nav.hidden = false;
-  nav.innerHTML = tabs.map(([k, i, l]) => `<button class="tab ${k === 'chat' ? 'chat' : ''} ${S.tab === k ? 'on' : ''}" data-tab="${k}">${ico(i)}<span>${l}</span></button>`).join('');
+  nav.classList.toggle('admin-nav', admin);
+  nav.innerHTML = tabs.map(x => {
+    if (!x) return '<span class="navspace" aria-hidden="true"></span>';
+    const [k, i, l] = x;
+    return `<button class="tab ${k === 'chat' ? 'chat' : ''} ${S.tab === k ? 'on' : ''}" data-tab="${k}">${ico(i)}${l ? `<span>${l}</span>` : ''}</button>`;
+  }).join('');
 }
 $('#tabs').addEventListener('click', e => {
   const b = e.target.closest('[data-tab]'); if (!b) return;
@@ -619,7 +622,7 @@ function cover(p) {
   return `<div class="ph">${mediaThumb(m)}${m.type === 'video' ? `<span class="badge tl">${ico('play')} Видео</span>` : ''}${p.media.length > 1 ? `<span class="badge tr">${ico('image')} ${p.media.length}</span>` : ''}</div>`;
 }
 function productCard(p, i) {
-  return `<button class="card ${p.state ? 'is-' + p.state : ''}" data-id="${p.id}" style="--i:${Math.min(i, 7)}"><div class="pw">${cover(p)}${p.state ? `<span class="st st-${p.state}">${p.state === 'sold' ? 'Продан' : 'Скоро'}</span>` : ''}<span class="tagw"><span class="tag">${esc(money(p))}</span></span></div><div class="nm">${esc(p.name)}</div>${p.sizes.length ? `<div class="sz">${esc(p.sizes.join(', '))}</div>` : ''}</button>`;
+  return `<button class="card ${p.state ? 'is-' + p.state : ''}" data-id="${p.id}" style="--i:${Math.min(i, 7)}"><div class="pw">${cover(p)}${p.discount ? '<span class="discount">Скидка</span>' : ''}${p.state ? `<span class="st st-${p.state}">${p.state === 'sold' ? 'Продан' : 'Скоро'}</span>` : ''}<span class="tagw"><span class="tag">${esc(money(p))}</span></span></div><div class="nm">${esc(p.name)}</div>${p.discount ? `<div class="oldp">${esc(p.old_price_text)}</div>` : ''}${p.sizes.length ? `<div class="sz">${esc(p.sizes.join(', '))}</div>` : ''}</button>`;
 }
 const skeletons = n => Array.from({ length: n }, () => `<div class="card skel"><div class="pw"><div class="ph"></div></div><div class="l" style="width:80%"></div><div class="l" style="width:40%"></div></div>`).join('');
 
@@ -627,7 +630,6 @@ async function renderCatalog() {
   view.innerHTML = `
     <header class="hero"><svg class="lg" width="46" height="46" viewBox="0 0 40 40" aria-hidden="true"><polygon points="3,36 17,6 27,6 13,36" fill="#C6F135"/><polygon points="22,15 26,8 38,36 30,36" fill="#9CC426"/><polygon points="11,27 30,27 33,31 8,31" fill="#E3F98A"/></svg><h1>AutoPrime</h1><p>${esc(S.me.tagline || 'Рули и авто тюнинг')}</p></header>
     <div class="stripe"></div>
-    <div id="season"></div>
     <div class="searchbar"><label class="search">${ico('search')}<input id="q" type="search" placeholder="Поиск по каталогу" value="${esc(S.search)}" autocomplete="off"></label><button type="button" class="fbtn" id="fbtn" aria-label="Фильтры">${ico('burger')}<i class="fdot" id="fdot" hidden></i></button></div>
     <div id="filters" class="filters"></div>
     <section id="grid" class="grid">${skeletons(6)}</section>`;
@@ -644,10 +646,6 @@ async function renderCatalog() {
   $('#grid').addEventListener('click', e => {
     const c = e.target.closest('.card[data-id]'); if (!c) return;
     const p = S.products.find(x => x.id === +c.dataset.id); if (p) { haptic('light'); openProduct(p); }
-  });
-  $('#season').addEventListener('click', e => {
-    const b = e.target.closest('[data-season]'); if (!b) return;
-    const p = S.products.find(x => x.id === +b.dataset.season); if (p) { haptic('light'); openProduct(p); }
   });
   try { await loadProducts(); drawFilters(); drawGrid(); }
   catch (e) { if (e.message !== 'unauthorized') $('#grid').innerHTML = emptyState('alert', 'Не удалось загрузить каталог', e.message); }
@@ -719,16 +717,10 @@ function drawGrid() {
   if (S.sort === 'asc') list = list.slice().sort((a, b) => a.price - b.price);
   else if (S.sort === 'desc') list = list.slice().sort((a, b) => b.price - a.price);
   const filtered = !!(q || S.cat || S.size);
-  drawSeason();
   g.classList.toggle('fresh', S.fresh && !filtered);
   g.innerHTML = list.length ? list.map(productCard).join('')
     : (S.products.length ? emptyState('search', 'Ничего не найдено', 'Попробуйте изменить запрос или фильтры') : emptyState('tag', 'Каталог пока пуст', 'Новые вещи скоро появятся'));
   if (list.length) S.fresh = false;
-}
-function drawSeason() {
-  const box = $('#season'); if (!box) return;
-  const p = S.products.find(x => x.featured && x.active);
-  box.innerHTML = p ? `<button class="season" data-season="${p.id}"><span><span class="ey">Хит сезона</span><b class="snm">${esc(p.name)}</b><span class="spr">${esc(money(p))}</span></span><span class="swheel" aria-hidden="true"><i></i></span></button>` : '';
 }
 
 const viewedIds = new Set();
@@ -754,7 +746,7 @@ function openProduct(p) {
         <span class="tagw big"><span class="tag">${esc(money(p))}</span></span>
       </div>
       <div class="pinfo">
-        ${p.featured ? '<span class="pill pill-soon">Хит сезона</span>' : ''}<h2>${esc(p.name)}</h2>
+        ${p.discount ? `<div class="detail-discount"><b>Скидка</b><s>${esc(p.old_price_text)}</s></div>` : ''}<h2>${esc(p.name)}</h2>
         <p class="psub">${esc(S.me.store)}</p>
         ${p.sizes.length ? `<h3 class="h3">Размер</h3><div class="sizes" id="sizes">${p.sizes.map(s => `<button type="button" class="sizebtn" data-s="${esc(s)}">${esc(s)}</button>`).join('')}</div><p class="hint">Выберите размер, он попадёт в сообщение менеджеру</p>` : ''}
         ${p.description ? `<h3 class="h3">Описание</h3><div class="desc">${esc(p.description)}</div>` : ''}
@@ -852,7 +844,7 @@ function renderProfile() {
 function renderAdmin() {
   S.atab = 'products';
   view.innerHTML = `
-    <header class="hero small"><h1>Управление</h1><p>Товары каталога и хит сезона</p></header>
+    <header class="hero small"><h1>Управление</h1><p>Добавление и редактирование товаров</p></header>
     <div class="stripe thin"></div>
     <div id="apane" style="padding-top:12px"></div>`;
   adminProducts();
@@ -870,7 +862,7 @@ async function adminProducts() {
     pane().innerHTML = (d.items.length ? `<div class="list">${d.items.map(p => `
       <button class="item" data-id="${p.id}">
         <span class="thumb">${p.media[0] ? mediaThumb(p.media[0]) : ico('tag')}</span>
-        <span class="grow"><div class="t"><span class="n">${esc(p.name)}</span>${p.featured ? '<span class="pill pill-soon">хит сезона</span>' : ''}${p.active ? '' : '<span class="pill">скрыт</span>'}${p.state === 'soon' ? '<span class="pill pill-soon">скоро</span>' : p.state === 'sold' ? '<span class="pill pill-sold">продан</span>' : ''}</div><div class="s">${esc(money(p))}</div>${p.sizes.length ? `<div class="s">${esc(p.sizes.join(', '))}</div>` : ''}</span>
+        <span class="grow"><div class="t"><span class="n">${esc(p.name)}</span>${p.discount ? '<span class="pill">скидка</span>' : ''}${p.active ? '' : '<span class="pill">скрыт</span>'}${p.state === 'soon' ? '<span class="pill pill-soon">скоро</span>' : p.state === 'sold' ? '<span class="pill pill-sold">продан</span>' : ''}</div><div class="s">${p.discount ? `<s>${esc(p.old_price_text)}</s> → ` : ''}${esc(money(p))}</div>${p.sizes.length ? `<div class="s">${esc(p.sizes.join(', '))}</div>` : ''}</span>
         <span class="go">${ico('chevron', 'sm')}</span>
       </button>`).join('')}</div>` : emptyState('tag', 'Товаров пока нет', 'Нажмите «+», чтобы добавить первый товар'))
       + `<button class="fab" id="fab" aria-label="Добавить товар">${ico('plus')}</button>`;
@@ -906,12 +898,13 @@ function openProductEditor(p) {
       <h3 class="h3">Информация</h3>
       <label class="field"><span>Название</span><input name="name" maxlength="100" placeholder="Например, Спорт-руль с перфорацией" value="${esc(p ? p.name : '')}" required></label>
       <div class="field"><span>Статус товара</span><div class="chips" id="statechips" style="margin-top:0">${[['', 'В наличии'], ['soon', 'Скоро'], ['sold', 'Продан']].map(([k, l]) => `<button type="button" class="chip ${(p ? (p.state || '') : '') === k ? 'sel' : ''}" data-k="${k}">${l}</button>`).join('')}</div></div>
-      <div class="field"><span>Главный баннер</span><div class="chips" style="margin-top:0"><button type="button" class="chip ${p && p.featured ? 'sel' : ''}" id="featured">Хит сезона</button></div><p class="hint">На главной показывается только один хит сезона. Если выключить — баннер исчезнет.</p></div>
       <div class="field"><span>Категория</span><div class="chips" id="catchips" style="margin-top:0">${CATS.map(c => `<button type="button" class="chip ${p && p.category === c ? 'sel' : ''}" data-c="${c}">${c}</button>`).join('')}</div></div>
       <div class="row2">
-        <label class="field"><span>Цена, ${esc(sign)}</span><input name="price" inputmode="decimal" placeholder="4500" value="${p ? esc(String(p.price)) : ''}" required></label>
-        <label class="field"><span>Размеры</span><input name="sizes" id="sizes" placeholder="350 мм, 360 мм" value="${esc(p ? p.sizes.join(', ') : '')}"></label>
+        <label class="field"><span>Новая цена, ${esc(sign)}</span><input name="price" inputmode="decimal" placeholder="14900" value="${p ? esc(String(p.price)) : ''}" required></label>
+        <label class="field"><span>Старая цена, ${esc(sign)}</span><input name="old_price" inputmode="decimal" placeholder="19900" value="${p && p.old_price ? esc(String(p.old_price)) : ''}"></label>
       </div>
+      <p class="hint" style="margin-top:-8px">Старую цену можно оставить пустой. Для скидки она должна быть выше новой.</p>
+      <label class="field"><span>Размеры</span><input name="sizes" id="sizes" placeholder="350 мм, 360 мм" value="${esc(p ? p.sizes.join(', ') : '')}"></label>
       <div class="chips" id="szprev" style="margin:-4px 0 14px"></div>
       <label class="field"><span>Описание</span><textarea name="description" maxlength="600" placeholder="Состояние, материал, особенности">${esc(p ? p.description : '')}</textarea></label>
       <div class="progress" id="prog" hidden><i></i></div>
@@ -923,11 +916,6 @@ function openProductEditor(p) {
   const el = ctl.el, grid = $('#mgrid', el), fileIn = $('#mfile', el);
   let cat = p ? (p.category || '') : '';
   let pstate = p ? (p.state || '') : '';
-  let featured = !!(p && p.featured);
-  $('#featured', el).addEventListener('click', e => {
-    featured = !featured;
-    e.currentTarget.classList.toggle('sel', featured);
-  });
   $$('#statechips .chip', el).forEach(c => c.addEventListener('click', () => {
     pstate = c.dataset.k;
     $$('#statechips .chip', el).forEach(x => x.classList.toggle('sel', x === c));
@@ -980,7 +968,7 @@ function openProductEditor(p) {
     const prog = $('#prog', el); prog.hidden = false;
     try {
       const fd = new FormData();
-      fd.append('name', name); fd.append('price', price); fd.append('sizes', f.sizes.value); fd.append('description', f.description.value); fd.append('category', cat); fd.append('state', pstate); fd.append('featured', featured ? '1' : '0');
+      fd.append('name', name); fd.append('price', price); fd.append('old_price', f.old_price.value); fd.append('sizes', f.sizes.value); fd.append('description', f.description.value); fd.append('category', cat); fd.append('state', pstate);
       if (p) fd.append('keep', JSON.stringify(items.filter(i => i.old).map(i => i.key)));
       const fresh = items.filter(i => !i.old);
       for (let n = 0; n < fresh.length; n++) {

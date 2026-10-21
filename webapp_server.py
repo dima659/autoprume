@@ -364,7 +364,7 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
         try:
             row = shop.create_product(fields.get("name"), fields.get("description"),
                                       fields.get("price"), fields.get("sizes"), saved, fields.get("category"), fields.get("state"),
-                                      fields.get("featured") == "1")
+                                      fields.get("old_price"))
         except Exception:
             remove_local(saved)
             raise
@@ -391,7 +391,7 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
                 raise ValueError(f"Максимум {MAX_MEDIA} фото и видео на товар")
             row = shop.update_product(pid, fields.get("name"), fields.get("description"),
                                       fields.get("price"), fields.get("sizes"), media_items, fields.get("category"), fields.get("state"),
-                                      fields.get("featured") == "1")
+                                      fields.get("old_price"))
         except Exception:
             remove_local(saved)
             raise

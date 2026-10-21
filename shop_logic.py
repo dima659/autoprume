@@ -134,7 +134,7 @@ class Shop:
                 sizes TEXT DEFAULT '',
                 photo_id TEXT DEFAULT '',
                 active INTEGER DEFAULT 1,
-                featured INTEGER DEFAULT 0
+                old_price REAL
             );
             CREATE TABLE IF NOT EXISTS leads (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -170,8 +170,8 @@ class Shop:
             conn.execute("ALTER TABLE products ADD COLUMN category TEXT DEFAULT ''")
         if "state" not in cols:
             conn.execute("ALTER TABLE products ADD COLUMN state TEXT DEFAULT ''")
-        if "featured" not in cols:
-            conn.execute("ALTER TABLE products ADD COLUMN featured INTEGER DEFAULT 0")
+        if "old_price" not in cols:
+            conn.execute("ALTER TABLE products ADD COLUMN old_price REAL")
         lcols = {r[1] for r in conn.execute("PRAGMA table_info(leads)")}
         if "waiting" not in lcols:
             conn.execute("ALTER TABLE leads ADD COLUMN waiting INTEGER DEFAULT 0")
@@ -204,6 +204,8 @@ class Shop:
 
     def product_dict(self, row) -> dict:
         keys = normalize_media(row["photo_id"])
+        old_price = row["old_price"]
+        has_discount = old_price is not None and old_price > row["price"]
         return {
             "id": row["id"],
             "name": row["name"],
@@ -212,11 +214,13 @@ class Shop:
             "description": row["description"] or "",
             "price": row["price"],
             "price_text": self.money(row["price"]),
+            "old_price": old_price if has_discount else None,
+            "old_price_text": self.money(old_price) if has_discount else "",
+            "discount": has_discount,
             "sizes": split_sizes(row["sizes"]),
             "media": [media_json(i) for i in keys],
             "media_keys": keys,
             "active": bool(row["active"]),
-            "featured": bool(row["featured"]),
         }
 
     def get_product(self, pid: int):
@@ -227,7 +231,7 @@ class Shop:
 
     def list_products(self, include_hidden: bool = False):
         conn = self.connect()
-        sql = "SELECT * FROM products" + ("" if include_hidden else " WHERE active = 1") + " ORDER BY featured DESC, id DESC"
+        sql = "SELECT * FROM products" + ("" if include_hidden else " WHERE active = 1") + " ORDER BY id DESC"
         rows = conn.execute(sql).fetchall()
         conn.close()
         return [self.product_dict(r) for r in rows]
@@ -242,32 +246,39 @@ class Shop:
         sizes = ", ".join(split_sizes(sizes or ""))
         return name, description, price, sizes
 
-    def create_product(self, name, description, price, sizes, media_items, category="", state="", featured=False):
+    @staticmethod
+    def clean_old_price(old_price, price):
+        if old_price is None or not str(old_price).strip():
+            return None
+        value = parse_price(old_price)
+        if value <= price:
+            raise ValueError("Старая цена должна быть выше новой цены")
+        return value
+
+    def create_product(self, name, description, price, sizes, media_items, category="", state="", old_price=None):
         name, description, price, sizes = self.clean_fields(name, description, price, sizes)
+        old_price = self.clean_old_price(old_price, price)
         if len(media_items) > MAX_MEDIA:
             raise ValueError(f"Максимум {MAX_MEDIA} фото и видео на товар")
         conn = self.connect()
-        if featured:
-            conn.execute("UPDATE products SET featured = 0")
         cur = conn.execute(
-            "INSERT INTO products (name, description, price, sizes, photo_id, active, category, state, featured) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)",
-            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), 1 if featured else 0),
+            "INSERT INTO products (name, description, price, sizes, photo_id, active, category, state, old_price) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)",
+            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), old_price),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM products WHERE id = ?", (cur.lastrowid,)).fetchone()
         conn.close()
         return row
 
-    def update_product(self, pid, name, description, price, sizes, media_items, category="", state="", featured=False):
+    def update_product(self, pid, name, description, price, sizes, media_items, category="", state="", old_price=None):
         name, description, price, sizes = self.clean_fields(name, description, price, sizes)
+        old_price = self.clean_old_price(old_price, price)
         if len(media_items) > MAX_MEDIA:
             raise ValueError(f"Максимум {MAX_MEDIA} фото и видео на товар")
         conn = self.connect()
-        if featured:
-            conn.execute("UPDATE products SET featured = 0 WHERE id != ?", (pid,))
         conn.execute(
-            "UPDATE products SET name=?, description=?, price=?, sizes=?, photo_id=?, category=?, state=?, featured=? WHERE id=?",
-            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), 1 if featured else 0, pid),
+            "UPDATE products SET name=?, description=?, price=?, sizes=?, photo_id=?, category=?, state=?, old_price=? WHERE id=?",
+            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), old_price, pid),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM products WHERE id = ?", (pid,)).fetchone()
