@@ -46,12 +46,12 @@ if BOT_TOKEN == "ВСТАВЬ_ТОКЕН_СЮДА":
 # Общий список ID всех администраторов
 ADMIN_IDS = [
     int(x.strip())
-    for x in os.getenv("ADMIN_IDS", "5486146974").split(",")
+    for x in os.getenv("ADMIN_IDS", "5443658937").split(",")
     if x.strip().isdigit()
 ]
 
 # Менеджер, на которого переводит кнопка под товаром
-MANAGER_USERNAME = "savrrage"
+MANAGER_USERNAME = "manager_auprime"
 
 CURRENCY_SIGN = os.getenv("CURRENCY_SIGN", "BYN")  # знак валюты в карточках товаров
 
