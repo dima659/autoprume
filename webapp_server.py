@@ -326,7 +326,9 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
                     parse_mode="HTML",
                 )
             return web.json_response({"waiting": True})
-        hello = f"Здравствуйте! Меня интересует: {label} ({shop.money(row['price'])})"
+        hello = (f"Здравствуйте! Хочу оформить предзаказ: {label} ({shop.money(row['price'])})"
+                 if row["state"] == "preorder" else
+                 f"Здравствуйте! Меня интересует: {label} ({shop.money(row['price'])})")
         url = f"https://t.me/{manager_username}?text={quote(hello)}"
         if not request["is_admin"]:
             await notify_admins(

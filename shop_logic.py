@@ -18,7 +18,7 @@ LOCAL_NAME_RE = re.compile(r"^[0-9a-f]{32}\.[a-z0-9]{2,5}$")
 MEDIA_PREFIXES = ("p:", "v:", "lp:", "lv:")
 CATEGORIES = ["Спорт", "Карбон", "Подогрев", "Классика", "Аксессуары", "Обвесы", "Диски"]
 STAGES = ["Заказ", "Склад", "В пути", "У вас"]
-STATES = {"": "В наличии", "soon": "Скоро", "sold": "Продан"}
+STATES = {"": "В наличии", "soon": "Скоро", "sold": "Продан", "preorder": "Предзаказ"}
 
 
 def clean_state(value) -> str:

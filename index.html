@@ -372,6 +372,7 @@ h1,h2,h3,p{margin:0}
 
 /* статусы «Скоро» и «Продан» */
 .st{position:absolute;top:10px;left:10px;z-index:2;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:800}
+.st-preorder{background:var(--accent, #c8f52b);color:#0C0908}
 .st-soon{background:#8EC1E8;color:#0C0908}
 .st-sold{background:#0C0908;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
 .is-sold .ph{filter:grayscale(1) brightness(.6)}
@@ -613,7 +614,7 @@ function cover(p) {
   return `<div class="ph">${mediaThumb(m)}${m.type === 'video' ? `<span class="badge tl">${ico('play')} Видео</span>` : ''}${p.media.length > 1 ? `<span class="badge tr">${ico('image')} ${p.media.length}</span>` : ''}</div>`;
 }
 function productCard(p, i) {
-  return `<button class="card ${p.state ? 'is-' + p.state : ''}" data-id="${p.id}" style="--i:${Math.min(i, 7)}"><div class="pw">${cover(p)}${p.state ? `<span class="st st-${p.state}">${p.state === 'sold' ? 'Продан' : 'Скоро'}</span>` : ''}<span class="tagw"><span class="tag">${esc(money(p))}</span></span></div><div class="nm">${esc(p.name)}</div>${p.sizes.length ? `<div class="sz">${esc(p.sizes.join(', '))}</div>` : ''}</button>`;
+  return `<button class="card ${p.state ? 'is-' + p.state : ''}" data-id="${p.id}" style="--i:${Math.min(i, 7)}"><div class="pw">${cover(p)}${p.state ? `<span class="st st-${p.state}">${p.state === 'sold' ? 'Продан' : p.state === 'preorder' ? 'Предзаказ' : 'Скоро'}</span>` : ''}<span class="tagw"><span class="tag">${esc(money(p))}</span></span></div><div class="nm">${esc(p.name)}</div>${p.sizes.length ? `<div class="sz">${esc(p.sizes.join(', '))}</div>` : ''}</button>`;
 }
 const skeletons = n => Array.from({ length: n }, () => `<div class="card skel"><div class="pw"><div class="ph"></div></div><div class="l" style="width:80%"></div><div class="l" style="width:40%"></div></div>`).join('');
 
@@ -748,6 +749,8 @@ function openProduct(p) {
         ? `<button class="btn big" id="ask" disabled>Продан</button><p class="cta-note">Этот товар уже купили. Загляните в каталог за другими</p>`
         : p.state === 'soon'
         ? `<button class="btn primary big" id="ask">${ico('eye')} Сообщить, когда появится</button><p class="cta-note">Напишем вам в Telegram, как только товар будет в наличии</p>`
+        : p.state === 'preorder'
+        ? `<button class="btn primary big" id="ask">${ico('chat')} Оформить предзаказ</button><p class="cta-note">Свяжитесь с менеджером, чтобы уточнить сроки и условия предзаказа</p>`
         : `<button class="btn primary big" id="ask">${ico('chat')} Написать менеджеру</button><p class="cta-note">Откроется чат с менеджером, сообщение об этом товаре уже написано</p>`}
     </div>`, { cls: 'pdp tall' });
   const car = $('.car', ctl.el);
@@ -853,7 +856,7 @@ async function adminProducts() {
     pane().innerHTML = (d.items.length ? `<div class="list">${d.items.map(p => `
       <button class="item" data-id="${p.id}">
         <span class="thumb">${p.media[0] ? mediaThumb(p.media[0]) : ico('tag')}</span>
-        <span class="grow"><div class="t"><span class="n">${esc(p.name)}</span>${p.active ? '' : '<span class="pill">скрыт</span>'}${p.state === 'soon' ? '<span class="pill pill-soon">скоро</span>' : p.state === 'sold' ? '<span class="pill pill-sold">продан</span>' : ''}</div><div class="s">${esc(money(p))}</div>${p.sizes.length ? `<div class="s">${esc(p.sizes.join(', '))}</div>` : ''}</span>
+        <span class="grow"><div class="t"><span class="n">${esc(p.name)}</span>${p.active ? '' : '<span class="pill">скрыт</span>'}${p.state === 'soon' ? '<span class="pill pill-soon">скоро</span>' : p.state === 'sold' ? '<span class="pill pill-sold">продан</span>' : p.state === 'preorder' ? '<span class="pill">предзаказ</span>' : ''}</div><div class="s">${esc(money(p))}</div>${p.sizes.length ? `<div class="s">${esc(p.sizes.join(', '))}</div>` : ''}</span>
         <span class="go">${ico('chevron', 'sm')}</span>
       </button>`).join('')}</div>` : emptyState('tag', 'Товаров пока нет', 'Нажмите «+», чтобы добавить первый товар'))
       + `<button class="fab" id="fab" aria-label="Добавить товар">${ico('plus')}</button>`;
@@ -888,7 +891,7 @@ function openProductEditor(p) {
       <input type="file" id="mfile" accept="image/*,video/*" multiple hidden>
       <h3 class="h3">Информация</h3>
       <label class="field"><span>Название</span><input name="name" maxlength="100" placeholder="Например, Спорт-руль с перфорацией" value="${esc(p ? p.name : '')}" required></label>
-      <div class="field"><span>Статус товара</span><div class="chips" id="statechips" style="margin-top:0">${[['', 'В наличии'], ['soon', 'Скоро'], ['sold', 'Продан']].map(([k, l]) => `<button type="button" class="chip ${(p ? (p.state || '') : '') === k ? 'sel' : ''}" data-k="${k}">${l}</button>`).join('')}</div></div>
+      <div class="field"><span>Статус товара</span><div class="chips" id="statechips" style="margin-top:0">${[['', 'В наличии'], ['soon', 'Скоро'], ['sold', 'Продан'], ['preorder', 'Предзаказ']].map(([k, l]) => `<button type="button" class="chip ${(p ? (p.state || '') : '') === k ? 'sel' : ''}" data-k="${k}">${l}</button>`).join('')}</div></div>
       <div class="field"><span>Категория</span><div class="chips" id="catchips" style="margin-top:0">${CATS.map(c => `<button type="button" class="chip ${p && p.category === c ? 'sel' : ''}" data-c="${c}">${c}</button>`).join('')}</div></div>
       <div class="row2">
         <label class="field"><span>Цена, ${esc(sign)}</span><input name="price" inputmode="decimal" placeholder="14900" value="${p ? esc(String(p.price)) : ''}" required></label>
