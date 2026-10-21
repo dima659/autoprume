@@ -133,7 +133,8 @@ class Shop:
                 price REAL NOT NULL,
                 sizes TEXT DEFAULT '',
                 photo_id TEXT DEFAULT '',
-                active INTEGER DEFAULT 1
+                active INTEGER DEFAULT 1,
+                featured INTEGER DEFAULT 0
             );
             CREATE TABLE IF NOT EXISTS leads (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -169,6 +170,8 @@ class Shop:
             conn.execute("ALTER TABLE products ADD COLUMN category TEXT DEFAULT ''")
         if "state" not in cols:
             conn.execute("ALTER TABLE products ADD COLUMN state TEXT DEFAULT ''")
+        if "featured" not in cols:
+            conn.execute("ALTER TABLE products ADD COLUMN featured INTEGER DEFAULT 0")
         lcols = {r[1] for r in conn.execute("PRAGMA table_info(leads)")}
         if "waiting" not in lcols:
             conn.execute("ALTER TABLE leads ADD COLUMN waiting INTEGER DEFAULT 0")
@@ -213,6 +216,7 @@ class Shop:
             "media": [media_json(i) for i in keys],
             "media_keys": keys,
             "active": bool(row["active"]),
+            "featured": bool(row["featured"]),
         }
 
     def get_product(self, pid: int):
@@ -223,7 +227,7 @@ class Shop:
 
     def list_products(self, include_hidden: bool = False):
         conn = self.connect()
-        sql = "SELECT * FROM products" + ("" if include_hidden else " WHERE active = 1") + " ORDER BY id DESC"
+        sql = "SELECT * FROM products" + ("" if include_hidden else " WHERE active = 1") + " ORDER BY featured DESC, id DESC"
         rows = conn.execute(sql).fetchall()
         conn.close()
         return [self.product_dict(r) for r in rows]
@@ -238,28 +242,28 @@ class Shop:
         sizes = ", ".join(split_sizes(sizes or ""))
         return name, description, price, sizes
 
-    def create_product(self, name, description, price, sizes, media_items, category="", state=""):
+    def create_product(self, name, description, price, sizes, media_items, category="", state="", featured=False):
         name, description, price, sizes = self.clean_fields(name, description, price, sizes)
         if len(media_items) > MAX_MEDIA:
             raise ValueError(f"Максимум {MAX_MEDIA} фото и видео на товар")
         conn = self.connect()
         cur = conn.execute(
-            "INSERT INTO products (name, description, price, sizes, photo_id, active, category, state) VALUES (?, ?, ?, ?, ?, 1, ?, ?)",
-            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state)),
+            "INSERT INTO products (name, description, price, sizes, photo_id, active, category, state, featured) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?)",
+            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), 1 if featured else 0),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM products WHERE id = ?", (cur.lastrowid,)).fetchone()
         conn.close()
         return row
 
-    def update_product(self, pid, name, description, price, sizes, media_items, category="", state=""):
+    def update_product(self, pid, name, description, price, sizes, media_items, category="", state="", featured=False):
         name, description, price, sizes = self.clean_fields(name, description, price, sizes)
         if len(media_items) > MAX_MEDIA:
             raise ValueError(f"Максимум {MAX_MEDIA} фото и видео на товар")
         conn = self.connect()
         conn.execute(
-            "UPDATE products SET name=?, description=?, price=?, sizes=?, photo_id=?, category=?, state=? WHERE id=?",
-            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), pid),
+            "UPDATE products SET name=?, description=?, price=?, sizes=?, photo_id=?, category=?, state=?, featured=? WHERE id=?",
+            (name, description, price, sizes, ",".join(media_items), clean_category(category), clean_state(state), 1 if featured else 0, pid),
         )
         conn.commit()
         row = conn.execute("SELECT * FROM products WHERE id = ?", (pid,)).fetchone()

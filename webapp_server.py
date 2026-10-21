@@ -363,7 +363,8 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
         fields, saved = await read_form(request)
         try:
             row = shop.create_product(fields.get("name"), fields.get("description"),
-                                      fields.get("price"), fields.get("sizes"), saved, fields.get("category"), fields.get("state"))
+                                      fields.get("price"), fields.get("sizes"), saved, fields.get("category"), fields.get("state"),
+                                      fields.get("featured") == "1")
         except Exception:
             remove_local(saved)
             raise
@@ -389,7 +390,8 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
             if len(media_items) > MAX_MEDIA:
                 raise ValueError(f"Максимум {MAX_MEDIA} фото и видео на товар")
             row = shop.update_product(pid, fields.get("name"), fields.get("description"),
-                                      fields.get("price"), fields.get("sizes"), media_items, fields.get("category"), fields.get("state"))
+                                      fields.get("price"), fields.get("sizes"), media_items, fields.get("category"), fields.get("state"),
+                                      fields.get("featured") == "1")
         except Exception:
             remove_local(saved)
             raise
