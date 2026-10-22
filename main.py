@@ -5,7 +5,8 @@ import os
 import re
 import signal
 import shutil
-import sqlite3
+import database
+import cloud_storage
 import sys
 from datetime import datetime, timedelta, timezone
 from urllib.parse import quote
@@ -46,7 +47,7 @@ if BOT_TOKEN == "ВСТАВЬ_ТОКЕН_СЮДА":
 # Общий список ID всех администраторов
 ADMIN_IDS = [
     int(x.strip())
-    for x in os.getenv("ADMIN_IDS", "5443658937").split(",")
+    for x in os.getenv("ADMIN_IDS", "5443658937","5486146974").split(",")
     if x.strip().isdigit()
 ]
 
@@ -127,12 +128,13 @@ def is_admin(user_id: int) -> bool:
 
 
 def get_db_path():
-    return "/data/orders.db" if os.path.exists("/data") else "orders.db"
+    directory = os.getenv("DATA_DIR") or ("/data" if os.path.exists("/data") else BASE_DIR)
+    os.makedirs(directory, exist_ok=True)
+    return os.path.join(directory, "orders.db")
 
 
 def db():
-    conn = sqlite3.connect(get_db_path())
-    conn.row_factory = sqlite3.Row
+    conn = database.connect(get_db_path())
     return conn
 
 
@@ -181,8 +183,11 @@ def decode_media(item: str):
     tag, ref = item.split(":", 1)
     kind = "video" if tag in ("v", "lv") else "photo"
     if tag in ("lp", "lv"):
-        path = os.path.join(upload_dir(), os.path.basename(ref))
-        return kind, (FSInputFile(path) if os.path.isfile(path) else None)
+        try:
+            path = cloud_storage.ensure_local(ref, upload_dir())
+            return kind, FSInputFile(path)
+        except (FileNotFoundError, RuntimeError, ValueError):
+            return kind, None
     return kind, ref
 
 
@@ -190,6 +195,7 @@ def remove_local_media(items):
     """Удаляет с диска файлы, загруженные через приложение (lp:/lv:), когда они больше не нужны."""
     for item in items:
         if item.startswith(("lp:", "lv:")):
+            cloud_storage.delete(os.path.basename(item.split(":", 1)[1]))
             try:
                 os.remove(os.path.join(upload_dir(), os.path.basename(item.split(":", 1)[1])))
             except OSError:
@@ -245,7 +251,7 @@ def init_db():
             os.makedirs("/data")
         except Exception:
             pass
-    conn = sqlite3.connect(get_db_path())
+    conn = database.connect(get_db_path())
     cursor = conn.cursor()
     # Старая таблица трекинга посылок (не меняется)
     cursor.execute('''
@@ -295,7 +301,7 @@ def track_user(user):
     """Запоминаем всех, кто нажал /start, чтобы потом можно было сделать рассылку."""
     try:
         now = datetime.now(timezone(timedelta(hours=3))).strftime("%d.%m %H:%M")
-        conn = sqlite3.connect(get_db_path())
+        conn = database.connect(get_db_path())
         conn.execute(
             "CREATE TABLE IF NOT EXISTS users (user_id INTEGER PRIMARY KEY, username TEXT DEFAULT '', "
             "full_name TEXT DEFAULT '', first_seen TEXT, last_seen TEXT, blocked INTEGER DEFAULT 0)"
@@ -391,7 +397,7 @@ async def ask_search_id(message: Message, state: FSMContext):
 async def perform_search(message: Message, state: FSMContext):
     search_query = message.text.strip()
     await state.clear()
-    conn = sqlite3.connect(get_db_path())
+    conn = database.connect(get_db_path())
     cursor = conn.cursor()
     cursor.execute("SELECT order_id, item_name, status FROM orders WHERE order_id = ? OR user_id = ?", (search_query, search_query))
     results = cursor.fetchall()
@@ -412,7 +418,7 @@ async def perform_search(message: Message, state: FSMContext):
 async def show_all_orders(message: Message, state: FSMContext):
     await state.clear()
     if not is_admin(message.from_user.id): return
-    conn = sqlite3.connect(get_db_path())
+    conn = database.connect(get_db_path())
     cursor = conn.cursor()
     cursor.execute("SELECT order_id, user_id, item_name, status FROM orders")
     results = cursor.fetchall()
@@ -441,7 +447,7 @@ async def start_delete_order(message: Message, state: FSMContext):
 async def process_delete(message: Message, state: FSMContext):
     order_id = message.text.strip()
     await state.clear()
-    conn = sqlite3.connect(get_db_path())
+    conn = database.connect(get_db_path())
     cursor = conn.cursor()
     cursor.execute("SELECT order_id FROM orders WHERE order_id = ? OR user_id = ?", (order_id, order_id))
     if cursor.fetchone():
@@ -531,7 +537,7 @@ async def process_status_and_save(message: Message, state: FSMContext):
     user_id = data['user_id']
     item_name = data['item_name']
 
-    conn = sqlite3.connect(get_db_path())
+    conn = database.connect(get_db_path())
     cursor = conn.cursor()
     cursor.execute('INSERT INTO orders (order_id, user_id, item_name, status) VALUES (?, ?, ?, ?)', (order_id, user_id, item_name, status))
     conn.commit()
@@ -1119,6 +1125,9 @@ async def start_webapp():
 
 # --- ЗАПУСК ---
 async def main():
+    database.validate_config()
+    await asyncio.to_thread(cloud_storage.check_bucket)
+    print("Хранилище: Neon PostgreSQL + Object Storage" if cloud_storage.enabled() else "Хранилище: локальное (только для разработки)")
     init_db()
     if not WEBAPP_URL and WEBAPP_MODULES:
         await start_tunnel()

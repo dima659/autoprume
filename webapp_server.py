@@ -11,6 +11,8 @@ import json
 import logging
 import os
 import uuid
+
+import cloud_storage
 from urllib.parse import quote
 
 from aiohttp import web
@@ -55,6 +57,8 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
             raise
         except ValueError as e:
             return jerr(400, str(e))
+        except RuntimeError as e:
+            return jerr(503, str(e))
         except Exception:
             log.exception("Ошибка в обработчике %s", request.path)
             return jerr(500, "Внутренняя ошибка сервера")
@@ -71,11 +75,12 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
             label += f" (@{html.escape(username)})"
         return label
 
-    def remove_local(items):
+    async def remove_local(items):
         for item in items:
             if item.startswith(("lp:", "lv:")):
                 name = item.split(":", 1)[1]
                 if LOCAL_NAME_RE.match(name):
+                    await asyncio.to_thread(cloud_storage.delete, name)
                     try:
                         os.remove(os.path.join(upload_dir, name))
                     except OSError:
@@ -96,12 +101,25 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
             await part.read()  # неподдерживаемый тип: просто пропускаем
             return None
         name = uuid.uuid4().hex + ext
-        with open(os.path.join(upload_dir, name), "wb") as f:
-            while True:
-                chunk = await part.read_chunk(512 * 1024)
-                if not chunk:
-                    break
-                f.write(chunk)
+        path = os.path.join(upload_dir, name)
+        try:
+            size = 0
+            with open(path, "wb") as f:
+                while True:
+                    chunk = await part.read_chunk(512 * 1024)
+                    if not chunk:
+                        break
+                    size += len(chunk)
+                    if size > cloud_storage.MAX_FILE_BYTES:
+                        raise ValueError("Максимальный размер одного фото или видео — 50 МБ")
+                    f.write(chunk)
+            if not size:
+                raise ValueError("Пустой файл. Выберите фото или видео заново")
+            await asyncio.to_thread(cloud_storage.put, name, path)
+        except BaseException:
+            if os.path.isfile(path):
+                os.remove(path)
+            raise
         return f"l{kind}:{name}"
 
     async def read_form(request):
@@ -117,7 +135,7 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
                 else:
                     fields[part.name] = await part.text()
         except Exception:
-            remove_local(saved)
+            await remove_local(saved)
             raise
         return fields, saved
 
@@ -150,7 +168,8 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
                 if kind in ("lp", "lv"):
                     if not LOCAL_NAME_RE.match(ref):
                         raise ValueError("bad name")
-                    source = FSInputFile(os.path.join(upload_dir, ref))
+                    path = await asyncio.to_thread(cloud_storage.ensure_local, ref, upload_dir)
+                    source = FSInputFile(path)
                 else:
                     source = ref
                 if kind in ("p", "lp"):
@@ -260,8 +279,11 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
         key = request.match_info["key"]
         if key.startswith(("lp:", "lv:")):
             name = key.split(":", 1)[1]
-            path = os.path.join(upload_dir, name)
-            if not LOCAL_NAME_RE.match(name) or not os.path.isfile(path):
+            if not LOCAL_NAME_RE.match(name):
+                raise web.HTTPNotFound()
+            try:
+                path = await asyncio.to_thread(cloud_storage.ensure_local, name, upload_dir)
+            except FileNotFoundError:
                 raise web.HTTPNotFound()
             return web.FileResponse(path, headers=IMMUTABLE)
         if key.startswith(("p:", "v:")):
@@ -367,7 +389,7 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
             row = shop.create_product(fields.get("name"), fields.get("description"),
                                       fields.get("price"), fields.get("sizes"), saved, fields.get("category"), fields.get("state"))
         except Exception:
-            remove_local(saved)
+            await remove_local(saved)
             raise
         return web.json_response(shop.product_dict(row))
 
@@ -393,9 +415,9 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
             row = shop.update_product(pid, fields.get("name"), fields.get("description"),
                                       fields.get("price"), fields.get("sizes"), media_items, fields.get("category"), fields.get("state"))
         except Exception:
-            remove_local(saved)
+            await remove_local(saved)
             raise
-        remove_local([i for i in old_items if i not in media_items])
+        await remove_local([i for i in old_items if i not in media_items])
         if old["state"] == "soon" and row["state"] != "soon":
             asyncio.create_task(notify_waiting(pid))
         return web.json_response(shop.product_dict(row))
@@ -410,7 +432,7 @@ def create_app(*, bot, token, admin_ids, shop, manager_username, store_name,
         items = shop.delete_product(product_id(request))
         if items is None:
             raise web.HTTPNotFound()
-        remove_local(items)
+        await remove_local(items)
         return web.json_response({"ok": True})
 
     async def product_broadcast(request):

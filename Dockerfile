@@ -8,7 +8,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --only-binary=:all: -r requirements.txt
 
-COPY main.py shop_logic.py webapp_server.py index.html avatar.jpg ./
+COPY main.py shop_logic.py webapp_server.py database.py cloud_storage.py index.html avatar.jpg ./
 
 EXPOSE 10000
 CMD ["python", "-u", "main.py"]

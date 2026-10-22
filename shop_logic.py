@@ -1,13 +1,13 @@
 """Логика магазина без зависимостей от aiohttp и aiogram.
 
 Здесь: проверка подписи Telegram Mini App (initData), работа с медиа товаров
-и все операции с базой SQLite (товары, отслеживание заказов, «кто интересовался»).
+и все операции с базой SQLite / PostgreSQL (товары, отслеживание заказов, «кто интересовался»).
 """
 import hashlib
 import hmac
 import json
 import re
-import sqlite3
+import database
 import time
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qsl, quote
@@ -114,9 +114,7 @@ class Shop:
         self.currency_sign = currency_sign
 
     def connect(self):
-        conn = sqlite3.connect(self.db_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return database.connect(self.db_path)
 
     def init_schema(self):
         conn = self.connect()
